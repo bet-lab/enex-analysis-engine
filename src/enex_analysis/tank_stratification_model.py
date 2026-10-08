@@ -19,6 +19,7 @@ class StratifiedTankTDMA:
 
     This class models a cylindrical storage tank split into N vertical layers (nodes).
     Each node enforces an energy balance that includes:
+
     - Storage term via node thermal capacitance (C).
     - Effective thermal conduction between adjacent nodes using effective
       conductivity (k_eff) that accounts for both molecular conduction and
@@ -35,15 +36,18 @@ class StratifiedTankTDMA:
     The model uses an effective thermal conductivity (k_eff) approach to
     integrate molecular conduction and natural convection effects. For each
     node pair (i, i+1), the effective conductivity is calculated based on:
+
     - Temperature difference (dT = T[i+1] - T[i])
     - Rayleigh number (Ra), which characterizes the buoyancy-driven flow
     - Nusselt number (Nu), which relates effective to molecular conductivity
 
     Stable stratification (dT < 0, upper warmer than lower):
+
     - Convection is suppressed, primarily molecular conduction
     - Nu ≈ 1.0 with small correction terms
 
     Unstable stratification (dT > 0, lower warmer than upper):
+
     - Natural convection enhances heat transfer
     - Nu > 1.0, increasing with Rayleigh number
     - Laminar (Ra < 1e7): Nu ∝ Ra^0.25
@@ -57,6 +61,7 @@ class StratifiedTankTDMA:
     next-step temperatures.
 
     Units
+
     - Temperatures: K
     - Geometry: m
     - Volumetric flow: m³/s

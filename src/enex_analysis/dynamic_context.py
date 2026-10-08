@@ -179,6 +179,7 @@ class Subsystem(Protocol):
         -------
         dict
             Must include at least:
+
             - ``'Q_contribution'`` (float):
                 Net energy contribution to tank [W].
             - ``'E_subsystem'`` (float):

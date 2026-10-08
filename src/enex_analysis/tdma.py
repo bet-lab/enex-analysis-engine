@@ -1,6 +1,7 @@
 """TDMA (Tri-Diagonal Matrix Algorithm) solver and related utilities.
 
 Provides:
+
 - ``TDMA``: solve tri-diagonal systems via matrix inversion
 - ``_add_loop_advection_terms``: inject forced-convection advection
   terms into TDMA coefficient arrays
