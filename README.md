@@ -11,7 +11,7 @@ A Python library that enables simultaneous energy (first-law) and exergy (second
 Traditional energy analysis tells you _how much_ energy is used, but not _how well_ it's used. Exergy analysis reveals the true thermodynamic efficiency by accounting for energy quality and identifying where irreversibilities occur. Together, energy-exergy analysis provides:
 
 - **Complete thermodynamic picture**: Understand both quantity (energy) and quality (exergy) of energy flows
-- **Inefficiency identification**: Pinpoint where and why energy is being destroyed
+- **Inefficiency identification**: Pinpoint where exergy is consumed through irreversible processes while energy is conserved
 - **Technology comparison**: Fair comparison between different energy conversion technologies
 - **Optimization guidance**: Identify the most promising areas for system improvement
 
@@ -78,39 +78,38 @@ The library provides models for a wide range of energy conversion systems, organ
 
 ---
 
-## Quick Start
+## API entry points
 
-### Example 1: Electric Boiler System
+The installed Python namespace is **`enex_analysis`**, while the distribution name is `enex-analysis-engine`. The package initializer exposes the embedded TMHP package; it does not re-export component classes or `print_balance`.
+
+- [ElectricBoiler implementation](src/enex_analysis/electric_boiler.py): `enex_analysis.electric_boiler.ElectricBoiler`. Construction requires explicit heater, tank, temperature and flow parameters. `analyze_steady(T_tank_w, T0, Q_heat_target, return_dict=True)` returns a dictionary, or a one-row DataFrame when `return_dict=False`; dynamic operation uses `analyze_dynamic`.
+- [Balance formatter](src/enex_analysis/enex_functions.py): `enex_analysis.enex_functions.print_balance(balance, decimal=2)` accepts a balance mapping. It is not a top-level export.
+- [System models](src/enex_analysis/enex_engine.py) contain the cooling/heating classes listed above; follow the actual module and method signatures.
+
+### Electric-boiler steady snapshot
+
+After preparing the checkout and environment below:
 
 ```python
-from enex_analysis_engine import ElectricBoiler, print_balance
+from enex_analysis.electric_boiler import ElectricBoiler
 
-# Initialize system
-boiler = ElectricBoiler()
-
-# Set operating conditions
-boiler.T_w_tank = 60   # Tank temperature [°C]
-boiler.T_w_sup = 10    # Supply water temperature [°C]
-boiler.T_w_serv = 45   # Service water temperature [°C]
-boiler.dV_w_serv = 1.2 # Flow rate [L/min]
-boiler.T0 = 0          # Reference temperature [°C]
-
-# Run analysis
-boiler.system_update()
-
-# View results
-print(f"Energy input: {boiler.E_heater:.2f} W")
-print(f"Exergy efficiency: {boiler.X_eff:.4f}")
-
-# Print detailed balances
-print("\n=== Energy Balance ===")
-print_balance(boiler.energy_balance)
-
-print("\n=== Exergy Balance ===")
-print_balance(boiler.exergy_balance)
+boiler = ElectricBoiler(
+    heater_capacity=6000.0,
+    V_tank_full=0.2,
+    T_sup_w_C=10.0,
+    T_tank_w_lower_bound_C=50.0,
+    T_tank_w_upper_bound_C=60.0,
+    T_tank_w_in_C=10.0,
+    T_mix_w_out_C=45.0,
+    dV_mix_w_out_max=0.0001,
+)
+result = boiler.analyze_steady(T_tank_w=55.0, T0=10.0, Q_heat_target=4000.0)
+print(result["E_heater [W]"])  # 6000.0
 ```
 
-For more examples, see the [Documentation](https://bet-lab.github.io/enex_analysis_engine/).
+The constructor uses heater power in W, tank volume in m³, the explicitly named temperatures in °C, and maximum mixed-water volumetric flow in m³/s. In `analyze_steady`, **`Q_heat_target > 0` switches the fixed-capacity heater on**; it does not modulate heater power to the requested target. Thus this snapshot reports 6000 W with a 4000 W target. It does not solve a transient tank balance, and the steady path sets tank loss to zero.
+
+This is a synthetic interface example, not a validated operating point or annual calculation. The older zero-argument `ElectricBoiler()` / `system_update()` example does not describe this class. Component imports load shared helpers from the pinned TMHP submodule; this example does not establish compatibility or physical validity of every other model. Consult the source and [I/O guide](docs/source/guides/io-guide.md) before adapting a study.
 
 ---
 
@@ -121,25 +120,17 @@ For more examples, see the [Documentation](https://bet-lab.github.io/enex_analys
 - Python >= 3.10
 - `uv` package manager
 
-### Installation Methods
+### Checkout and install
 
-This project uses `uv` for package management. To get started:
+Clone the current repository with its embedded TMHP submodule:
 
 ```bash
-# 1) Install uv
-# Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# Linux/Mac
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 2) Clone repository
-git clone https://github.com/bet-lab/enex_analysis_engine.git
-cd enex_analysis_engine
-
-# 3) Install dependencies
+git clone --recurse-submodules https://github.com/bet-lab/enex-analysis-engine.git
+cd enex-analysis-engine
 uv sync
 ```
+
+For an existing checkout, run `git submodule update --init --recursive` before `uv sync`. The submodule is located at `src/enex_analysis/tmhp` and uses its own `src/tmhp` layout; package initialization adds that embedded source to the import path. Do not substitute an unrelated TMHP revision without checking API compatibility. Dependency installation requires access to the Git source configured for dartwork-mpl.
 
 ---
 
@@ -147,55 +138,20 @@ uv sync
 
 Comprehensive documentation is available:
 
-- **[📚 Online Documentation](https://bet-lab.github.io/enex_analysis_engine/)**: Full API reference and user guide (Sphinx-generated)
+- **[Documentation source](docs/source/index.rst)**: Sphinx API reference and user guide
 - **[IO_DOCS.md](IO_DOCS.md)**: Complete input/output interface documentation for all components
 - **[EXAMPLES.md](EXAMPLES.md)**: Additional usage examples and tutorials (Korean)
 
-The online documentation includes:
-
-- **Getting Started**: Installation and quick start guides
-- **User Guides**: Detailed guides on using the library features
-- **Examples**:
-  - [Electric Boiler](docs/source/examples/electric-boiler.md)
-  - [Gas Boiler](docs/source/examples/gas-boiler.md)
-  - [Heat Pump Systems](docs/source/examples/air-source-heat-pump.md)
-  - And more...
-- **API Reference**: Complete documentation for all classes and functions
+Source documentation includes [installation](docs/source/getting-started/installation.rst), the [user guide](docs/source/guides/user-guide.rst), [core API](docs/source/api/core.rst), [engine API](docs/source/api/engines.rst) and [generated module reference](docs/source/api/generated/modules.rst). Source signatures take precedence when an older tutorial uses a different class interface.
 
 ---
 
-## Project Structure
+## Source map
 
-```
-enex_analysis_engine/
-├── src/
-│   └── enex_analysis/
-│       ├── __init__.py           # Package initialization
-│       ├── AirSourceHeatPumpBoiler.py
-│       ├── balance_helpers.py    # Balance calculation utilities
-│       ├── calc_util.py          # Unit conversion utilities
-│       ├── constants.py          # Physical constants
-│       ├── enex_engine.py        # Core system models
-│       ├── enex_functions.py     # Shared functions for calc modules
-│       ├── GasBoiler.py          # Advanced Gas Boiler model
-│       ├── GroundSourceHeatPumpBoiler.py
-│       ├── PV_to_Converter.py    # PV system model
-│       └── Tank_stratification_model.py # 1D Stratified Tank model
-├── docs/                         # Sphinx documentation
-├── pyproject.toml                # Project configuration
-├── uv.lock                       # Dependency lock file
-├── IO_DOCS.md                    # I/O documentation (Korean)
-├── EXAMPLES.md                   # Usage examples (Korean)
-└── README.md                     # This file
-```
+- [Package initializer](src/enex_analysis/__init__.py): embedded TMHP import aliases.
+- [Electric boiler](src/enex_analysis/electric_boiler.py), [gas boiler](src/enex_analysis/gas_boiler.py) and [system engines](src/enex_analysis/enex_engine.py): system calculations.
+- [Shared functions](src/enex_analysis/enex_functions.py): balance formatting and shared calculations.
+- [Stratified storage](src/enex_analysis/tank_stratification_model.py): tank model.
+- [Documentation sources](docs/source/), [project configuration](pyproject.toml) and [submodule configuration](.gitmodules): environment and interface reference.
 
-### Key Modules
-
-- **`enex_engine.py`**: Contains the core energy system classes (Boilers, Heat Pumps, etc.).
-- **`AirSourceHeatPumpBoiler.py`**, **`GasBoiler.py`**, **`GroundSourceHeatPumpBoiler.py`**: Advanced dynamic models for building energy systems.
-- **`Tank_stratification_model.py`**, **`PV_to_Converter.py`**: Specialized physical models for thermal storage and renewable generation.
-- **`calc_util.py`**: Unit conversion constants (e.g., `C2K`, `h2s`, `W2kW`).
-- **`enex_functions.py`**: Shared helper functions used across different engines.
-- **`balance_helpers.py`**: Utilities for calculating and formatting thermodynamic balances.
-
----
+The heat-pump cycle implementation is embedded under `src/enex_analysis/tmhp`; preserve its submodule identity and its model-specific units, reference-state and balance conventions when comparing systems.
