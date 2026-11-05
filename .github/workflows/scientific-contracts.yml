@@ -1,0 +1,51 @@
+name: Scientific contracts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', github.workflow, github.event.pull_request.number) || format('{0}-run-{1}', github.workflow, github.run_id) }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Scientific contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          version: "0.12.9"
+          enable-cache: true
+      - name: Install locked development environment
+        run: uv sync --locked --extra dev --no-editable
+      - name: Verify embedded dependency checkout
+        run: |
+          test "$(git -C src/enex_analysis/tmhp rev-parse HEAD)" = "$(git rev-parse HEAD:src/enex_analysis/tmhp)"
+      - name: Check new test code
+        run: |
+          uv run --no-sync ruff check tests
+          uv run --no-sync ruff format --check tests
+          uv run --no-sync mypy --follow-imports=skip tests
+      - name: Run deterministic contracts
+        run: uv run --no-sync pytest -q --durations=10 --junitxml=contracts.xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: scientific-contract-results
+          path: contracts.xml
+          if-no-files-found: error
+          retention-days: 7

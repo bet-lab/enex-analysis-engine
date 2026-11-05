@@ -40,6 +40,7 @@ dartwork-mpl = { git = "https://github.com/dartworklabs/dartwork-mpl.git"}
 
 [project.optional-dependencies]
 dev = [
+    "hypothesis==6.155.7",
     "mypy>=1.19.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
